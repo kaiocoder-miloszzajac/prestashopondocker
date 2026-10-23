@@ -1,0 +1,70 @@
+name: "emausmalopolska"
+
+networks:
+  prestashop-network:
+    driver: bridge
+
+volumes:
+  dbdata:
+  psdata:
+
+services:
+  #generate:
+  #  container_name: ubuntu
+  #  image: ubuntu:26.04
+  #  volumes:
+  #    - .:/prestashop-docker
+  #  command: ["/prestashop-docker/.docker/generate-docker.sh"]
+  #  networks:
+  #    - prestashop-network
+
+  mysql:
+    container_name: mysql
+    image: mysql:9.7.2
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: prestashopdb
+    ports:
+      - 3307:3306
+    networks:
+      - prestashop-network
+    volumes:
+      - dbdata:/var/lib/mysql
+
+  prestashop:
+    container_name: prestashop
+    image: prestashop/prestashop:8.0
+    restart: unless-stopped
+    depends_on:
+      - mysql
+    ports:
+      - 8080:80
+    environment:
+      DB_SERVER: mysql-prestashop
+      DB_NAME: prestashopdb
+      DB_USER: root
+      DB_PASSWD: admin
+      PS_DEV_MODE: 1
+      PS_DOMAIN: emausmalopolska
+    networks:
+      - prestashop-network
+    volumes:
+      - psdata:/var/www/html
+      - type: bind
+        source: ./modules/ps_googleanalytics # local path to the module
+        target: /var/www/html/modules/ps_googleanalytics # path to be mounted in the container
+      #- ./modules:/var/www/html/modules # Optional: Specific modules folder
+      #- ./themes:/var/www/html/themes # Optional: Specific themes folder
+      #- ./override:/var/www/html/override # Optional: Override files
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:5.2
+    container_name: phpmyadmin
+    networks:
+      - prestashop-network
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: admin
+    ports:
+      - "9090:80"
